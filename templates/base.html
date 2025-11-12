@@ -138,15 +138,26 @@
 </head>
 <body>
     <div class="container">
-        {% if session.ranger_id %}
+        {% if session.ranger_id or session.admin_authenticated %}
         <div class="nav">
             <div>
                 <a href="{{ url_for('index') }}">Home</a>
+                {% if session.ranger_id %}
                 <a href="{{ url_for('ranger_dashboard') }}">My Dashboard</a>
+                {% endif %}
+                {% if session.admin_authenticated %}
                 <a href="{{ url_for('report') }}">View All Signatures</a>
+                {% endif %}
             </div>
             <div>
+                {% if session.ranger_id %}
+                <span style="color: #666; margin-right: 15px;">Ranger: {{ session.ranger_id }}</span>
                 <a href="{{ url_for('logout') }}">Logout</a>
+                {% endif %}
+                {% if session.admin_authenticated %}
+                <span style="color: #666; margin-right: 15px;">Admin</span>
+                <a href="{{ url_for('admin_logout') }}">Logout</a>
+                {% endif %}
             </div>
         </div>
         {% endif %}

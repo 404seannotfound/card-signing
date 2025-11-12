@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Login{% endblock %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 50px auto;">
+    <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+        <h1 style="text-align: center; margin-bottom: 30px;">🔒 Admin Login</h1>
+        
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Enter the admin password to view and manage signatures
+        </p>
+        
+        <form method="POST" style="margin-bottom: 20px;">
+            <div style="margin-bottom: 20px;">
+                <label for="password" style="display: block; margin-bottom: 8px; font-weight: 500;">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    required 
+                    autofocus
+                    style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px;"
+                    placeholder="Enter admin password"
+                />
+            </div>
+            
+            <button type="submit" class="btn" style="width: 100%; padding: 14px; font-size: 16px;">
+                Login
+            </button>
+        </form>
+        
+        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
+            <p style="color: #666; font-size: 14px;">
+                Are you a ranger? <a href="{{ url_for('login') }}" style="color: #667eea; text-decoration: none; font-weight: 500;">Ranger Login</a>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

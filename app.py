@@ -20,6 +20,9 @@ if app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgres://'):
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max file size
 
+# Admin password for viewing signatures
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+
 db = SQLAlchemy(app)
 
 # Database Models
@@ -180,13 +183,39 @@ def view_signature(ranger_id):
         as_attachment=False
     )
 
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == ADMIN_PASSWORD:
+            session['admin_authenticated'] = True
+            flash('Login successful!', 'success')
+            return redirect(url_for('report'))
+        else:
+            flash('Invalid password', 'error')
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_authenticated', None)
+    flash('Logged out successfully', 'success')
+    return redirect(url_for('index'))
+
 @app.route('/report')
 def report():
+    # Check if admin is authenticated
+    if not session.get('admin_authenticated'):
+        flash('Please login to view signatures', 'error')
+        return redirect(url_for('admin_login'))
+    
     rangers = Ranger.query.join(Signature).all()
     return render_template('report.html', rangers=rangers)
 
 @app.route('/approve_signature/<int:signature_id>', methods=['POST'])
 def approve_signature(signature_id):
+    if not session.get('admin_authenticated'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    
     signature = Signature.query.get_or_404(signature_id)
     signature.status = 'approved'
     signature.approved_at = datetime.utcnow()
@@ -197,19 +226,26 @@ def approve_signature(signature_id):
 
 @app.route('/reject_signature/<int:signature_id>', methods=['POST'])
 def reject_signature(signature_id):
+    if not session.get('admin_authenticated'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    
     data = request.get_json()
-    reason = data.get('reason', 'No reason provided')
+    rejection_reason = data.get('reason', '').strip()
     
     signature = Signature.query.get_or_404(signature_id)
     signature.status = 'rejected'
     signature.rejected_at = datetime.utcnow()
     signature.approved_at = None
-    signature.rejection_reason = reason
+    signature.rejection_reason = rejection_reason
     db.session.commit()
-    return jsonify({'status': 'rejected', 'rejected_at': signature.rejected_at.strftime('%B %d, %Y at %I:%M %p'), 'reason': reason})
+    return jsonify({'status': 'rejected', 'rejected_at': signature.rejected_at.strftime('%B %d, %Y at %I:%M %p'), 'reason': rejection_reason})
 
 @app.route('/print_pdf')
 def print_pdf():
+    if not session.get('admin_authenticated'):
+        flash('Please login to generate PDF', 'error')
+        return redirect(url_for('admin_login'))
+    
     # Get approved signatures only
     signatures = Signature.query.filter_by(status='approved').all()
     
