@@ -1,0 +1,201 @@
+# Burning Man Ranger Signature Manager
+
+Two solutions for managing Burning Man ranger signatures with approval workflow and PDF generation:
+
+1. **Standalone HTML** (`signature-manager.html`) - Single-file browser app, no server needed
+2. **Flask Web App** (`app.py`) - Full-featured server with PostgreSQL database
+
+## Features
+
+- **Ranger Portal**: Rangers can log in with their ID to upload and manage their signatures
+- **Signature Management**: Upload, view, and update signature images with status tracking
+- **Approval Workflow**: Administrators can approve or reject signatures with reasons
+- **Status Tracking**: Rangers can see if their signature is pending, approved, or rejected
+- **Report Dashboard**: View all ranger signatures with approval status in a grid layout
+- **PDF Generation**: Generate condensed PDF packets with approved signatures only
+- **Database Storage**: PostgreSQL database for production (Render.com compatible) or SQLite for local development
+
+## Project Structure
+
+```
+remote-sign/
+├── signature-manager.html      # ⭐ STANDALONE - No installation needed!
+├── STANDALONE_GUIDE.md         # Guide for standalone version
+├── WHICH_VERSION.md            # Help choosing which version to use
+│
+├── app.py                      # Flask web application (optional)
+├── requirements.txt            # Python dependencies (for Flask)
+├── Procfile                    # Render.com deployment config
+├── runtime.txt                 # Python version specification
+├── .env.example                # Environment variables template
+├── templates/                  # HTML templates (for Flask)
+│   ├── base.html
+│   ├── index.html
+│   ├── login.html
+│   ├── dashboard.html
+│   └── report.html
+├── DEPLOYMENT.md               # Flask deployment guide
+├── DATABASE_NOTES.md           # Database setup notes
+└── chat-gpt5-condense.py       # Original PDF generation script (reference)
+```
+
+## Database Schema (Flask App Only)
+
+The Flask app uses SQLAlchemy with PostgreSQL (production) or SQLite (development).
+
+### Rangers Table
+- `id`: Primary key
+- `ranger_id`: Unique ranger identifier (issued by clubhouse)
+- `name`: Optional ranger name
+- `created_at`: Registration timestamp
+
+### Signatures Table
+- `id`: Primary key
+- `ranger_id`: Foreign key to Rangers table
+- `image_data`: Binary image data (PNG format)
+- `image_format`: Image format (default: PNG)
+- `uploaded_at`: Upload/update timestamp
+- `status`: Approval status ('pending', 'approved', 'rejected') - default: 'pending'
+- `approved_at`: Timestamp when signature was approved (nullable)
+- `rejected_at`: Timestamp when signature was rejected (nullable)
+- `rejection_reason`: Text explanation for rejection (nullable)
+
+**Note**: Tables are created automatically on first run. No migration needed for fresh installations.
+
+## Quick Start - Standalone HTML Version
+
+**No installation required!** Just open the file in your browser:
+
+```bash
+open signature-manager.html
+# or double-click the file
+```
+
+**Features:**
+- ✅ Works entirely in your browser
+- ✅ No server or Python needed
+- ✅ Data stored in browser localStorage
+- ✅ Export/import data as JSON
+- ✅ Generate PDF with approved signatures
+- ✅ Full approval workflow
+
+**Limitations:**
+- Data stored locally in browser only
+- No multi-user database
+- Data lost if browser cache cleared (use export/import)
+
+---
+
+## Flask Web App Setup (Optional)
+
+For a full server-based solution with database:
+
+1. **Clone the repository**
+   ```bash
+   cd /Users/seansp/git/remote-sign
+   ```
+
+2. **Create virtual environment**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env and set SECRET_KEY to a random string
+   ```
+
+5. **Run the application**
+   ```bash
+   python app.py
+   ```
+
+6. **Access the application**
+   Open your browser to `http://localhost:5000`
+
+## Deployment to Render.com
+
+1. **Create a new Web Service** on Render.com
+   - Connect your GitHub repository
+   - Select "Python" as the environment
+
+2. **Configure the service**
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `gunicorn app:app`
+   - Add environment variable: `SECRET_KEY` (generate a secure random string)
+
+3. **Add PostgreSQL Database**
+   - Create a new PostgreSQL database on Render.com
+   - The `DATABASE_URL` environment variable will be automatically set
+   - The app automatically handles the postgres:// to postgresql:// conversion
+
+4. **Deploy**
+   - Render.com will automatically deploy on push to your main branch
+   - Database tables are created automatically on first run
+
+## Usage
+
+### For Rangers
+1. Navigate to the application URL
+2. Click "Ranger Login"
+3. Enter your Ranger ID (issued by clubhouse)
+4. Upload your signature image (PNG, JPG, or GIF)
+5. View your signature status (Pending, Approved, or Rejected)
+6. If rejected, see the reason and upload a new signature
+7. Update your signature anytime by uploading a new one
+
+### For Administrators
+1. Navigate to "View All Signatures"
+2. Browse all uploaded ranger signatures with status indicators
+3. Review pending signatures
+4. Click "Approve" to approve a signature
+5. Click "Reject" to reject a signature and provide a reason
+6. View approval/rejection dates and reasons
+7. Click "Generate PDF" to create a printable packet of approved signatures only
+8. PDF uses condensed grid layout (similar to chat-gpt5-condense.py)
+
+## PDF Generation
+
+The PDF export feature:
+- Uses landscape letter-size pages
+- Arranges signatures in a grid layout (configurable in code)
+- Automatically scales signatures to fit cells
+- Maintains aspect ratios
+- Only includes approved signatures
+- Generates filename with timestamp
+
+## Security Notes
+
+- Change `SECRET_KEY` in production to a secure random string
+- Ranger IDs are case-sensitive
+- No password authentication (relies on ID secrecy)
+- File uploads limited to 5MB
+- Only image formats accepted: PNG, JPG, JPEG, GIF, WEBP
+
+## Technology Stack
+
+- **Backend**: Flask (Python web framework)
+- **Database**: SQLAlchemy ORM with PostgreSQL/SQLite
+- **PDF Generation**: ReportLab
+- **Image Processing**: Pillow (PIL)
+- **Frontend**: HTML5, CSS3, Vanilla JavaScript
+- **Deployment**: Gunicorn WSGI server
+
+## Future Enhancements
+
+- Admin authentication for report page
+- Ranger name field in registration
+- Email notifications for approval/rejection
+- Bulk upload capability
+- Export to other formats (CSV, Excel)
+- Signature search and filtering
+- Mobile-responsive improvements
+- Approval history tracking
+- Batch approve/reject operations

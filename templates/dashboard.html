@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Ranger Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .signature-preview {
+        max-width: 100%;
+        max-height: 300px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        margin: 20px 0;
+        display: block;
+    }
+    
+    .upload-area {
+        border: 3px dashed #ddd;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        background: #f8f9fa;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .upload-area:hover {
+        border-color: #667eea;
+        background: #f0f2ff;
+    }
+    
+    .upload-area.dragover {
+        border-color: #667eea;
+        background: #e8ebff;
+    }
+    
+    #preview-container {
+        margin-top: 20px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Welcome, Ranger {{ ranger.ranger_id }}!</h1>
+    
+    {% if ranger.signature %}
+    <div style="margin-top: 30px;">
+        <h2>Your Current Signature</h2>
+        <div style="text-align: center;">
+            <img src="{{ url_for('view_signature', ranger_id=ranger.id) }}" alt="Your signature" class="signature-preview">
+        </div>
+        <p style="color: #666; margin-top: 10px;">
+            Last updated: {{ ranger.signature.uploaded_at.strftime('%B %d, %Y at %I:%M %p') }}
+        </p>
+        
+        <!-- Signature Status -->
+        <div style="margin-top: 20px; padding: 15px; border-radius: 8px; 
+            {% if ranger.signature.status == 'approved' %}background: #d4edda; border: 2px solid #28a745;
+            {% elif ranger.signature.status == 'rejected' %}background: #f8d7da; border: 2px solid #dc3545;
+            {% else %}background: #fff3cd; border: 2px solid #ffc107;{% endif %}">
+            <h3 style="margin-bottom: 10px;">
+                Status: 
+                {% if ranger.signature.status == 'approved' %}
+                    <span style="color: #28a745;">✓ Approved</span>
+                {% elif ranger.signature.status == 'rejected' %}
+                    <span style="color: #dc3545;">✗ Rejected</span>
+                {% else %}
+                    <span style="color: #856404;">⏳ Pending Review</span>
+                {% endif %}
+            </h3>
+            
+            {% if ranger.signature.status == 'approved' %}
+                <p style="color: #155724; margin: 0;">
+                    Approved on: {{ ranger.signature.approved_at.strftime('%B %d, %Y at %I:%M %p') }}
+                </p>
+                <p style="color: #155724; margin-top: 5px;">
+                    Your signature has been approved and will be included in the printed packet.
+                </p>
+            {% elif ranger.signature.status == 'rejected' %}
+                <p style="color: #721c24; margin: 0;">
+                    Rejected on: {{ ranger.signature.rejected_at.strftime('%B %d, %Y at %I:%M %p') }}
+                </p>
+                <p style="color: #721c24; margin-top: 10px; font-weight: 600;">
+                    Reason: {{ ranger.signature.rejection_reason }}
+                </p>
+                <p style="color: #721c24; margin-top: 10px;">
+                    Please upload a new signature that addresses the issue above.
+                </p>
+            {% else %}
+                <p style="color: #856404; margin: 0;">
+                    Your signature is awaiting review by an administrator.
+                </p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <div style="margin-top: 40px;">
+        <h2>{% if ranger.signature %}Update{% else %}Upload{% endif %} Your Signature</h2>
+        <p style="color: #666; margin-bottom: 20px;">
+            Upload a clear image of your signature (PNG, JPG, or GIF format, max 5MB)
+        </p>
+        
+        <form id="upload-form" enctype="multipart/form-data">
+            <div class="upload-area" id="upload-area">
+                <input type="file" id="signature-input" name="signature" accept="image/*" style="display: none;">
+                <div id="upload-prompt">
+                    <p style="font-size: 48px; margin-bottom: 10px;">📝</p>
+                    <p style="font-size: 18px; color: #667eea; font-weight: 500;">Click to select or drag & drop your signature</p>
+                    <p style="color: #999; margin-top: 10px;">Supported formats: PNG, JPG, GIF</p>
+                </div>
+            </div>
+            
+            <div id="preview-container" style="display: none;">
+                <img id="preview-image" class="signature-preview" alt="Preview">
+                <button type="submit" class="btn" style="margin-top: 20px;">Upload Signature</button>
+                <button type="button" class="btn btn-secondary" onclick="resetUpload()" style="margin-top: 20px; margin-left: 10px;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('signature-input');
+    const uploadForm = document.getElementById('upload-form');
+    const previewContainer = document.getElementById('preview-container');
+    const previewImage = document.getElementById('preview-image');
+    const uploadPrompt = document.getElementById('upload-prompt');
+    
+    uploadArea.addEventListener('click', () => fileInput.click());
+    
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            handleFileSelect();
+        }
+    });
+    
+    fileInput.addEventListener('change', handleFileSelect);
+    
+    function handleFileSelect() {
+        const file = fileInput.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                uploadPrompt.style.display = 'none';
+                previewContainer.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+    
+    function resetUpload() {
+        fileInput.value = '';
+        uploadPrompt.style.display = 'block';
+        previewContainer.style.display = 'none';
+    }
+    
+    uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData();
+        formData.append('signature', fileInput.files[0]);
+        
+        try {
+            const response = await fetch('{{ url_for("upload_signature") }}', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                window.location.href = data.redirect;
+            } else {
+                alert('Error: ' + (data.error || 'Upload failed'));
+            }
+        } catch (error) {
+            alert('Upload failed: ' + error.message);
+        }
+    });
+</script>
+{% endblock %}

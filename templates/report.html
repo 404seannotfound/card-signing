@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}All Ranger Signatures{% endblock %}
+
+{% block extra_css %}
+<style>
+    .signatures-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+        margin-top: 30px;
+    }
+    
+    .signature-card {
+        background: #f8f9fa;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    
+    .signature-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .signature-card.approved {
+        border-color: #28a745;
+        background: #d4edda;
+    }
+    
+    .signature-card.rejected {
+        border-color: #dc3545;
+        background: #f8d7da;
+        opacity: 0.7;
+    }
+    
+    .signature-card.pending {
+        border-color: #ffc107;
+        background: #fff3cd;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 5px;
+    }
+    
+    .status-approved {
+        background: #28a745;
+        color: white;
+    }
+    
+    .status-rejected {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .status-pending {
+        background: #ffc107;
+        color: #333;
+    }
+    
+    .action-buttons {
+        margin-top: 10px;
+        display: flex;
+        gap: 5px;
+        justify-content: center;
+    }
+    
+    .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    
+    .approve-btn {
+        background: #28a745;
+        color: white;
+    }
+    
+    .approve-btn:hover {
+        background: #218838;
+    }
+    
+    .reject-btn {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .reject-btn:hover {
+        background: #c82333;
+    }
+    
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+    }
+    
+    .modal-content {
+        background: white;
+        margin: 10% auto;
+        padding: 30px;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 500px;
+    }
+    
+    .modal-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+        justify-content: flex-end;
+    }
+    
+    .signature-img {
+        max-width: 100%;
+        max-height: 150px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+    
+    .ranger-id {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .upload-date {
+        font-size: 12px;
+        color: #999;
+    }
+    
+    .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .stats {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>All Ranger Signatures</h1>
+    
+    <div class="stats">
+        <strong>Total Signatures:</strong> {{ rangers|length }} | 
+        <strong>Approved:</strong> <span id="approved-count">{{ rangers|selectattr('signature.status', 'equalto', 'approved')|list|length }}</span> | 
+        <strong>Pending:</strong> <span id="pending-count">{{ rangers|selectattr('signature.status', 'equalto', 'pending')|list|length }}</span> | 
+        <strong>Rejected:</strong> <span id="rejected-count">{{ rangers|selectattr('signature.status', 'equalto', 'rejected')|list|length }}</span>
+    </div>
+    
+    <div class="controls">
+        <a href="{{ url_for('print_pdf') }}" class="btn" style="background: #28a745;">🖨️ Generate PDF (Approved Only)</a>
+    </div>
+    
+    {% if rangers %}
+    <div class="signatures-grid">
+        {% for ranger in rangers %}
+        {% if ranger.signature %}
+        <div class="signature-card {{ ranger.signature.status }}" 
+             data-signature-id="{{ ranger.signature.id }}">
+            <img src="{{ url_for('view_signature', ranger_id=ranger.id) }}" 
+                 alt="Signature of {{ ranger.ranger_id }}" 
+                 class="signature-img">
+            <div class="ranger-id">{{ ranger.ranger_id }}</div>
+            <div class="upload-date">{{ ranger.signature.uploaded_at.strftime('%b %d, %Y') }}</div>
+            
+            <!-- Status Badge -->
+            <div class="status-badge status-{{ ranger.signature.status }}">
+                {% if ranger.signature.status == 'approved' %}✓ Approved
+                {% elif ranger.signature.status == 'rejected' %}✗ Rejected
+                {% else %}⏳ Pending{% endif %}
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                {% if ranger.signature.status != 'approved' %}
+                <button class="action-btn approve-btn" onclick="approveSignature({{ ranger.signature.id }}, event)">
+                    Approve
+                </button>
+                {% endif %}
+                {% if ranger.signature.status != 'rejected' %}
+                <button class="action-btn reject-btn" onclick="showRejectModal({{ ranger.signature.id }}, '{{ ranger.ranger_id }}', event)">
+                    Reject
+                </button>
+                {% endif %}
+            </div>
+            
+            <!-- Show rejection reason if rejected -->
+            {% if ranger.signature.status == 'rejected' and ranger.signature.rejection_reason %}
+            <div style="margin-top: 8px; font-size: 11px; color: #721c24; font-style: italic;">
+                {{ ranger.signature.rejection_reason }}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="text-align: center; color: #999; margin-top: 40px;">
+        No signatures uploaded yet. Rangers can log in to upload their signatures.
+    </p>
+    {% endif %}
+</div>
+
+<!-- Rejection Modal -->
+<div id="rejectModal" class="modal">
+    <div class="modal-content">
+        <h2>Reject Signature</h2>
+        <p>Ranger ID: <strong id="modal-ranger-id"></strong></p>
+        <p style="margin-top: 15px;">Please provide a reason for rejection:</p>
+        <textarea id="rejection-reason" style="width: 100%; min-height: 100px; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-family: inherit; font-size: 14px;" placeholder="e.g., Signature is unclear, please upload a clearer image"></textarea>
+        <div class="modal-buttons">
+            <button onclick="closeRejectModal()" class="btn btn-secondary">Cancel</button>
+            <button onclick="submitRejection()" class="btn btn-danger">Reject Signature</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentSignatureId = null;
+    
+    async function approveSignature(signatureId, event) {
+        event.stopPropagation();
+        
+        if (!confirm('Approve this signature?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/approve_signature/${signatureId}`, {
+                method: 'POST'
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'approved') {
+                // Reload page to update UI
+                location.reload();
+            }
+        } catch (error) {
+            console.error('Error approving signature:', error);
+            alert('Failed to approve signature');
+        }
+    }
+    
+    function showRejectModal(signatureId, rangerId, event) {
+        event.stopPropagation();
+        currentSignatureId = signatureId;
+        document.getElementById('modal-ranger-id').textContent = rangerId;
+        document.getElementById('rejection-reason').value = '';
+        document.getElementById('rejectModal').style.display = 'block';
+    }
+    
+    function closeRejectModal() {
+        document.getElementById('rejectModal').style.display = 'none';
+        currentSignatureId = null;
+    }
+    
+    async function submitRejection() {
+        const reason = document.getElementById('rejection-reason').value.trim();
+        
+        if (!reason) {
+            alert('Please provide a reason for rejection');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/reject_signature/${currentSignatureId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason: reason })
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'rejected') {
+                closeRejectModal();
+                // Reload page to update UI
+                location.reload();
+            }
+        } catch (error) {
+            console.error('Error rejecting signature:', error);
+            alert('Failed to reject signature');
+        }
+    }
+    
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('rejectModal');
+        if (event.target === modal) {
+            closeRejectModal();
+        }
+    }
+</script>
+{% endblock %}

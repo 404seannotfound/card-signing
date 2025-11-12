@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ranger Signature Manager</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            color: #667eea;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+            font-weight: 500;
+        }
+        
+        .btn:hover {
+            background: #5568d3;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        input[type="text"], input[type="file"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            font-family: inherit;
+        }
+        
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .signatures-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .signature-card {
+            background: #f8f9fa;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .signature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .signature-card.approved {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .signature-card.rejected {
+            border-color: #dc3545;
+            background: #f8d7da;
+            opacity: 0.8;
+        }
+        
+        .signature-card.pending {
+            border-color: #ffc107;
+            background: #fff3cd;
+        }
+        
+        .signature-img {
+            max-width: 100%;
+            max-height: 150px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            background: white;
+            padding: 5px;
+        }
+        
+        .ranger-id {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 8px 0;
+        }
+        
+        .status-approved {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-rejected {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .status-pending {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .stats {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            font-size: 14px;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            font-size: 18px;
+            color: #667eea;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background: white;
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 20px 0;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+        
+        .preview-img {
+            max-width: 100%;
+            max-height: 300px;
+            margin: 20px 0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+        }
+        
+        .rejection-reason {
+            font-size: 12px;
+            color: #721c24;
+            font-style: italic;
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(220, 53, 69, 0.1);
+            border-radius: 4px;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔥 Burning Man Ranger Signature Manager</h1>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('ranger')">Ranger Portal</button>
+                <button class="tab" onclick="showTab('admin')">Admin Dashboard</button>
+            </div>
+            
+            <!-- Ranger Portal Tab -->
+            <div id="ranger-tab" class="tab-content active">
+                <div id="ranger-alert"></div>
+                
+                <h2>Ranger Login</h2>
+                <input type="text" id="ranger-id-input" placeholder="Enter your Ranger ID" />
+                <button class="btn" onclick="rangerLogin()">Login / View My Signature</button>
+                
+                <div id="ranger-dashboard" style="display: none; margin-top: 30px;">
+                    <h2>Welcome, Ranger <span id="current-ranger-id"></span>!</h2>
+                    
+                    <div id="current-signature-display" style="display: none;">
+                        <h3>Your Current Signature</h3>
+                        <div style="text-align: center;">
+                            <img id="current-signature-img" class="preview-img" />
+                        </div>
+                        <div id="signature-status-display"></div>
+                    </div>
+                    
+                    <h3 style="margin-top: 30px;">Upload/Update Your Signature</h3>
+                    <div class="upload-area" onclick="document.getElementById('signature-file').click()">
+                        <input type="file" id="signature-file" accept="image/*" style="display: none;" onchange="previewSignature()" />
+                        <p style="font-size: 48px; margin-bottom: 10px;">📝</p>
+                        <p style="font-size: 18px; color: #667eea; font-weight: 500;">Click to select your signature image</p>
+                        <p style="color: #999; margin-top: 10px;">PNG, JPG, GIF supported</p>
+                    </div>
+                    
+                    <div id="signature-preview" style="display: none; text-align: center;">
+                        <img id="preview-img" class="preview-img" />
+                        <br>
+                        <button class="btn btn-success" onclick="uploadSignature()">Upload Signature</button>
+                        <button class="btn btn-secondary" onclick="cancelUpload()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Admin Dashboard Tab -->
+            <div id="admin-tab" class="tab-content">
+                <div id="admin-alert"></div>
+                
+                <h2>All Ranger Signatures</h2>
+                
+                <div class="stats">
+                    <div class="stat-item">
+                        <div>Total Signatures</div>
+                        <div class="stat-value" id="stat-total">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div>Approved</div>
+                        <div class="stat-value" style="color: #28a745;" id="stat-approved">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div>Pending</div>
+                        <div class="stat-value" style="color: #ffc107;" id="stat-pending">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div>Rejected</div>
+                        <div class="stat-value" style="color: #dc3545;" id="stat-rejected">0</div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-success" onclick="generatePDF()">🖨️ Generate PDF (Approved Only)</button>
+                <button class="btn btn-secondary" onclick="exportData()">💾 Export Data (JSON)</button>
+                <button class="btn btn-secondary" onclick="importData()">📥 Import Data (JSON)</button>
+                <input type="file" id="import-file" accept=".json" style="display: none;" onchange="handleImport()" />
+                
+                <div id="signatures-container" class="signatures-grid"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Rejection Modal -->
+    <div id="rejectModal" class="modal">
+        <div class="modal-content">
+            <h2>Reject Signature</h2>
+            <p>Ranger ID: <strong id="modal-ranger-id"></strong></p>
+            <p style="margin-top: 15px;">Please provide a reason for rejection:</p>
+            <textarea id="rejection-reason" rows="4" placeholder="e.g., Signature is unclear, please upload a clearer image"></textarea>
+            <div class="modal-buttons">
+                <button onclick="closeRejectModal()" class="btn btn-secondary">Cancel</button>
+                <button onclick="submitRejection()" class="btn btn-danger">Reject Signature</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Data storage using localStorage
+        const STORAGE_KEY = 'ranger_signatures';
+        
+        let currentRangerId = null;
+        let currentRejectId = null;
+        let previewImageData = null;
+        
+        // Initialize
+        function init() {
+            loadSignatures();
+            updateAdminView();
+        }
+        
+        // Tab switching
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            if (tabName === 'ranger') {
+                document.querySelector('.tab:nth-child(1)').classList.add('active');
+                document.getElementById('ranger-tab').classList.add('active');
+            } else {
+                document.querySelector('.tab:nth-child(2)').classList.add('active');
+                document.getElementById('admin-tab').classList.add('active');
+                updateAdminView();
+            }
+        }
+        
+        // Storage functions
+        function getSignatures() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            return data ? JSON.parse(data) : {};
+        }
+        
+        function saveSignatures(signatures) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(signatures));
+        }
+        
+        function loadSignatures() {
+            // Initialize if empty
+            if (!localStorage.getItem(STORAGE_KEY)) {
+                saveSignatures({});
+            }
+        }
+        
+        // Ranger Portal Functions
+        function rangerLogin() {
+            const rangerId = document.getElementById('ranger-id-input').value.trim();
+            
+            if (!rangerId) {
+                showAlert('ranger', 'Please enter your Ranger ID', 'error');
+                return;
+            }
+            
+            currentRangerId = rangerId;
+            document.getElementById('current-ranger-id').textContent = rangerId;
+            document.getElementById('ranger-dashboard').style.display = 'block';
+            
+            loadRangerSignature();
+            showAlert('ranger', 'Welcome! You can upload or update your signature below.', 'success');
+        }
+        
+        function loadRangerSignature() {
+            const signatures = getSignatures();
+            const signature = signatures[currentRangerId];
+            
+            if (signature) {
+                document.getElementById('current-signature-display').style.display = 'block';
+                document.getElementById('current-signature-img').src = signature.imageData;
+                displaySignatureStatus(signature);
+            } else {
+                document.getElementById('current-signature-display').style.display = 'none';
+            }
+        }
+        
+        function displaySignatureStatus(signature) {
+            const statusDiv = document.getElementById('signature-status-display');
+            let html = '<div style="margin-top: 20px; padding: 15px; border-radius: 8px; ';
+            
+            if (signature.status === 'approved') {
+                html += 'background: #d4edda; border: 2px solid #28a745;">';
+                html += '<h3 style="color: #28a745;">✓ Approved</h3>';
+                html += `<p style="color: #155724;">Approved on: ${new Date(signature.approvedAt).toLocaleString()}</p>`;
+                html += '<p style="color: #155724; margin-top: 5px;">Your signature has been approved and will be included in the printed packet.</p>';
+            } else if (signature.status === 'rejected') {
+                html += 'background: #f8d7da; border: 2px solid #dc3545;">';
+                html += '<h3 style="color: #dc3545;">✗ Rejected</h3>';
+                html += `<p style="color: #721c24;">Rejected on: ${new Date(signature.rejectedAt).toLocaleString()}</p>`;
+                html += `<p style="color: #721c24; margin-top: 10px; font-weight: 600;">Reason: ${signature.rejectionReason}</p>`;
+                html += '<p style="color: #721c24; margin-top: 10px;">Please upload a new signature that addresses the issue above.</p>';
+            } else {
+                html += 'background: #fff3cd; border: 2px solid #ffc107;">';
+                html += '<h3 style="color: #856404;">⏳ Pending Review</h3>';
+                html += '<p style="color: #856404;">Your signature is awaiting review by an administrator.</p>';
+            }
+            
+            html += '</div>';
+            statusDiv.innerHTML = html;
+        }
+        
+        function previewSignature() {
+            const file = document.getElementById('signature-file').files[0];
+            
+            if (!file) return;
+            
+            if (!file.type.startsWith('image/')) {
+                showAlert('ranger', 'Please select an image file', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImageData = e.target.result;
+                document.getElementById('preview-img').src = previewImageData;
+                document.getElementById('signature-preview').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function cancelUpload() {
+            document.getElementById('signature-file').value = '';
+            document.getElementById('signature-preview').style.display = 'none';
+            previewImageData = null;
+        }
+        
+        function uploadSignature() {
+            if (!previewImageData) {
+                showAlert('ranger', 'Please select an image first', 'error');
+                return;
+            }
+            
+            const signatures = getSignatures();
+            
+            signatures[currentRangerId] = {
+                rangerId: currentRangerId,
+                imageData: previewImageData,
+                uploadedAt: new Date().toISOString(),
+                status: 'pending',
+                approvedAt: null,
+                rejectedAt: null,
+                rejectionReason: null
+            };
+            
+            saveSignatures(signatures);
+            
+            showAlert('ranger', 'Signature uploaded successfully! It is now pending review.', 'success');
+            loadRangerSignature();
+            cancelUpload();
+        }
+        
+        // Admin Functions
+        function updateAdminView() {
+            const signatures = getSignatures();
+            const container = document.getElementById('signatures-container');
+            
+            const signatureArray = Object.values(signatures);
+            
+            // Update stats
+            document.getElementById('stat-total').textContent = signatureArray.length;
+            document.getElementById('stat-approved').textContent = signatureArray.filter(s => s.status === 'approved').length;
+            document.getElementById('stat-pending').textContent = signatureArray.filter(s => s.status === 'pending').length;
+            document.getElementById('stat-rejected').textContent = signatureArray.filter(s => s.status === 'rejected').length;
+            
+            if (signatureArray.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #999; padding: 40px;">No signatures uploaded yet.</p>';
+                return;
+            }
+            
+            container.innerHTML = signatureArray.map(sig => {
+                let statusBadge = '';
+                let actionButtons = '';
+                let rejectionInfo = '';
+                
+                if (sig.status === 'approved') {
+                    statusBadge = '<div class="status-badge status-approved">✓ Approved</div>';
+                    actionButtons = `<button class="action-btn btn-danger" onclick="showRejectModal('${sig.rangerId}')">Reject</button>`;
+                } else if (sig.status === 'rejected') {
+                    statusBadge = '<div class="status-badge status-rejected">✗ Rejected</div>';
+                    actionButtons = `<button class="action-btn btn-success" onclick="approveSignature('${sig.rangerId}')">Approve</button>`;
+                    if (sig.rejectionReason) {
+                        rejectionInfo = `<div class="rejection-reason">${sig.rejectionReason}</div>`;
+                    }
+                } else {
+                    statusBadge = '<div class="status-badge status-pending">⏳ Pending</div>';
+                    actionButtons = `
+                        <button class="action-btn btn-success" onclick="approveSignature('${sig.rangerId}')">Approve</button>
+                        <button class="action-btn btn-danger" onclick="showRejectModal('${sig.rangerId}')">Reject</button>
+                    `;
+                }
+                
+                return `
+                    <div class="signature-card ${sig.status}">
+                        <img src="${sig.imageData}" class="signature-img" alt="Signature" />
+                        <div class="ranger-id">${sig.rangerId}</div>
+                        <div style="font-size: 12px; color: #666;">Uploaded: ${new Date(sig.uploadedAt).toLocaleDateString()}</div>
+                        ${statusBadge}
+                        <div class="action-buttons">
+                            ${actionButtons}
+                        </div>
+                        ${rejectionInfo}
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function approveSignature(rangerId) {
+            if (!confirm(`Approve signature for ${rangerId}?`)) return;
+            
+            const signatures = getSignatures();
+            if (signatures[rangerId]) {
+                signatures[rangerId].status = 'approved';
+                signatures[rangerId].approvedAt = new Date().toISOString();
+                signatures[rangerId].rejectedAt = null;
+                signatures[rangerId].rejectionReason = null;
+                saveSignatures(signatures);
+                updateAdminView();
+                showAlert('admin', `Signature for ${rangerId} approved!`, 'success');
+            }
+        }
+        
+        function showRejectModal(rangerId) {
+            currentRejectId = rangerId;
+            document.getElementById('modal-ranger-id').textContent = rangerId;
+            document.getElementById('rejection-reason').value = '';
+            document.getElementById('rejectModal').style.display = 'block';
+        }
+        
+        function closeRejectModal() {
+            document.getElementById('rejectModal').style.display = 'none';
+            currentRejectId = null;
+        }
+        
+        function submitRejection() {
+            const reason = document.getElementById('rejection-reason').value.trim();
+            
+            if (!reason) {
+                alert('Please provide a reason for rejection');
+                return;
+            }
+            
+            const signatures = getSignatures();
+            if (signatures[currentRejectId]) {
+                signatures[currentRejectId].status = 'rejected';
+                signatures[currentRejectId].rejectedAt = new Date().toISOString();
+                signatures[currentRejectId].approvedAt = null;
+                signatures[currentRejectId].rejectionReason = reason;
+                saveSignatures(signatures);
+                updateAdminView();
+                showAlert('admin', `Signature for ${currentRejectId} rejected.`, 'info');
+            }
+            
+            closeRejectModal();
+        }
+        
+        // PDF Generation
+        function generatePDF() {
+            const signatures = getSignatures();
+            const approved = Object.values(signatures).filter(s => s.status === 'approved');
+            
+            if (approved.length === 0) {
+                showAlert('admin', 'No approved signatures to generate PDF', 'error');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'in',
+                format: 'letter'
+            });
+            
+            const pageWidth = 11;
+            const pageHeight = 8.5;
+            const margin = 0.5;
+            const gutter = 0.2;
+            const cellWidth = 2.4;
+            const cellHeight = 1.2;
+            
+            const cols = Math.floor((pageWidth - 2 * margin + gutter) / (cellWidth + gutter));
+            const rows = Math.floor((pageHeight - 2 * margin + gutter) / (cellHeight + gutter));
+            const perPage = cols * rows;
+            
+            let pageIndex = 0;
+            
+            for (let i = 0; i < approved.length; i++) {
+                if (i > 0 && i % perPage === 0) {
+                    doc.addPage();
+                    pageIndex++;
+                }
+                
+                const idx = i % perPage;
+                const row = Math.floor(idx / cols);
+                const col = idx % cols;
+                
+                const x = margin + col * (cellWidth + gutter);
+                const y = margin + row * (cellHeight + gutter);
+                
+                try {
+                    doc.addImage(approved[i].imageData, 'PNG', x, y, cellWidth, cellHeight);
+                } catch (e) {
+                    console.error('Error adding image:', e);
+                }
+            }
+            
+            doc.save(`ranger_signatures_${new Date().toISOString().split('T')[0]}.pdf`);
+            showAlert('admin', `PDF generated with ${approved.length} signatures!`, 'success');
+        }
+        
+        // Data Export/Import
+        function exportData() {
+            const signatures = getSignatures();
+            const dataStr = JSON.stringify(signatures, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `ranger_signatures_backup_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            showAlert('admin', 'Data exported successfully!', 'success');
+        }
+        
+        function importData() {
+            document.getElementById('import-file').click();
+        }
+        
+        function handleImport() {
+            const file = document.getElementById('import-file').files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (confirm('This will replace all existing data. Continue?')) {
+                        saveSignatures(data);
+                        updateAdminView();
+                        showAlert('admin', 'Data imported successfully!', 'success');
+                    }
+                } catch (err) {
+                    showAlert('admin', 'Error importing data: Invalid JSON file', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        // Alert system
+        function showAlert(tab, message, type) {
+            const alertDiv = document.getElementById(`${tab}-alert`);
+            alertDiv.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => {
+                alertDiv.innerHTML = '';
+            }, 5000);
+        }
+        
+        // Close modal on outside click
+        window.onclick = function(event) {
+            const modal = document.getElementById('rejectModal');
+            if (event.target === modal) {
+                closeRejectModal();
+            }
+        }
+        
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>

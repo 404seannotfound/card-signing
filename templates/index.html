@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Ranger Signature Manager - Home{% endblock %}
+
+{% block content %}
+<div class="card" style="text-align: center;">
+    <h1>🔥 Burning Man Ranger Signature Manager</h1>
+    <p style="font-size: 18px; color: #666; margin-bottom: 30px;">
+        Manage and organize ranger signatures for the Burning Man community
+    </p>
+    
+    <div style="margin-top: 40px;">
+        <a href="{{ url_for('login') }}" class="btn" style="margin-right: 10px;">Ranger Login</a>
+        <a href="{{ url_for('report') }}" class="btn btn-secondary">View All Signatures</a>
+    </div>
+    
+    <div style="margin-top: 50px; padding-top: 30px; border-top: 1px solid #eee;">
+        <h3 style="color: #666; margin-bottom: 15px;">How It Works</h3>
+        <div style="text-align: left; max-width: 600px; margin: 0 auto;">
+            <p style="margin-bottom: 10px;">📝 <strong>Rangers:</strong> Log in with your Ranger ID to upload or update your signature</p>
+            <p style="margin-bottom: 10px;">⏳ <strong>Review:</strong> Your signature will be pending until reviewed by an administrator</p>
+            <p style="margin-bottom: 10px;">✓ <strong>Approval:</strong> Administrators review and approve/reject signatures with feedback</p>
+            <p style="margin-bottom: 10px;">👀 <strong>View:</strong> Browse all ranger signatures with approval status in the report page</p>
+            <p style="margin-bottom: 10px;">🖨️ <strong>Print:</strong> Generate a condensed PDF with approved signatures only</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

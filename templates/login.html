@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Ranger Login{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 500px; margin: 50px auto;">
+    <h1>Ranger Login</h1>
+    <p style="color: #666; margin-bottom: 30px;">
+        Enter your Ranger ID issued by the clubhouse to access your signature.
+    </p>
+    
+    <form method="POST" action="{{ url_for('login') }}">
+        <label for="ranger_id" style="display: block; margin-bottom: 8px; font-weight: 500;">Ranger ID:</label>
+        <input type="text" id="ranger_id" name="ranger_id" placeholder="Enter your Ranger ID" required autofocus>
+        
+        <button type="submit" class="btn" style="width: 100%;">Login / Register</button>
+    </form>
+    
+    <p style="margin-top: 20px; color: #999; font-size: 14px;">
+        Don't have a Ranger ID? Contact the clubhouse to get one assigned.
+    </p>
+</div>
+{% endblock %}
