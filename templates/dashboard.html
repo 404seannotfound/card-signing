@@ -98,15 +98,28 @@
     
     <div style="margin-top: 40px;">
         <h2>{% if ranger.signature %}Update{% else %}Upload{% endif %} Your Signature</h2>
-        <p style="color: #666; margin-bottom: 20px;">
-            Upload a clear image of your signature (PNG, JPG, or GIF format, max 5MB)
-        </p>
         
-        <form id="upload-form" enctype="multipart/form-data">
-            <div class="upload-area" id="upload-area">
-                <input type="file" id="signature-input" name="signature" accept="image/*" style="display: none;">
-                <div id="upload-prompt">
-                    <p style="font-size: 48px; margin-bottom: 10px;">📝</p>
+        <!-- Tabs for Upload vs Draw -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee;">
+            <button type="button" class="tab-btn active" onclick="showUploadTab()" id="upload-tab-btn">
+                📤 Upload Image
+            </button>
+            <button type="button" class="tab-btn" onclick="showDrawTab()" id="draw-tab-btn">
+                ✏️ Draw Signature
+            </button>
+        </div>
+        
+        <!-- Upload Tab -->
+        <div id="upload-tab" class="signature-tab">
+            <p style="color: #666; margin-bottom: 20px;">
+                Upload a clear image of your signature (PNG, JPG, or GIF format, max 5MB)
+            </p>
+            
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="upload-area" id="upload-area">
+                    <input type="file" id="signature-input" name="signature" accept="image/*" style="display: none;">
+                    <div id="upload-prompt">
+                        <p style="font-size: 48px; margin-bottom: 10px;">📝</p>
                     <p style="font-size: 18px; color: #667eea; font-weight: 500;">Click to select or drag & drop your signature</p>
                     <p style="color: #999; margin-top: 10px;">Supported formats: PNG, JPG, GIF</p>
                 </div>
@@ -118,8 +131,87 @@
                 <button type="button" class="btn btn-secondary" onclick="resetUpload()" style="margin-top: 20px; margin-left: 10px;">Cancel</button>
             </div>
         </form>
+        </div>
+        
+        <!-- Draw Tab -->
+        <div id="draw-tab" class="signature-tab" style="display: none;">
+            <p style="color: #666; margin-bottom: 20px;">
+                Draw your signature using your mouse, touchscreen, or stylus
+            </p>
+            
+            <div style="background: white; border: 2px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                <!-- Canvas Controls -->
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
+                    <button type="button" class="btn btn-secondary" onclick="clearCanvas()" style="padding: 8px 16px;">
+                        🗑️ Clear
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="undoCanvas()" style="padding: 8px 16px;">
+                        ↶ Undo
+                    </button>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-weight: 500;">Pen Size:</label>
+                        <input type="range" id="pen-size" min="1" max="10" value="3" style="width: 100px;" oninput="updatePenSize()">
+                        <span id="pen-size-value">3</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-weight: 500;">Color:</label>
+                        <input type="color" id="pen-color" value="#000000" oninput="updatePenColor()" style="width: 50px; height: 35px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-weight: 500;">Zoom:</label>
+                        <button type="button" class="btn btn-secondary" onclick="zoomOut()" style="padding: 4px 12px;">−</button>
+                        <span id="zoom-level">100%</span>
+                        <button type="button" class="btn btn-secondary" onclick="zoomIn()" style="padding: 4px 12px;">+</button>
+                    </div>
+                </div>
+                
+                <!-- Canvas Container with Scroll -->
+                <div id="canvas-container" style="overflow: auto; border: 1px solid #ccc; border-radius: 4px; background: #f9f9f9; max-height: 500px;">
+                    <canvas id="signature-canvas" width="800" height="300" style="display: block; background: white; cursor: crosshair; touch-action: none;"></canvas>
+                </div>
+                
+                <p style="color: #999; font-size: 14px; margin-top: 10px;">
+                    💡 Tip: Use a stylus or your finger on touch devices for best results. Zoom in for finer detail.
+                </p>
+            </div>
+            
+            <button type="button" class="btn" onclick="saveDrawing()">Save Signature</button>
+            <button type="button" class="btn btn-secondary" onclick="clearCanvas()" style="margin-left: 10px;">Clear & Start Over</button>
+        </div>
     </div>
 </div>
+
+<style>
+    .tab-btn {
+        padding: 12px 24px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+        color: #666;
+        transition: all 0.3s;
+    }
+    
+    .tab-btn:hover {
+        color: #667eea;
+    }
+    
+    .tab-btn.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+    }
+    
+    .signature-tab {
+        animation: fadeIn 0.3s;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+</style>
 
 <script>
     const uploadArea = document.getElementById('upload-area');
@@ -194,5 +286,206 @@
             alert('Upload failed: ' + error.message);
         }
     });
+    
+    // ===== Drawing Canvas =====
+    const canvas = document.getElementById('signature-canvas');
+    const ctx = canvas.getContext('2d');
+    const canvasContainer = document.getElementById('canvas-container');
+    
+    let isDrawing = false;
+    let lastX = 0;
+    let lastY = 0;
+    let penSize = 3;
+    let penColor = '#000000';
+    let zoomLevel = 1;
+    let drawingHistory = [];
+    let currentPath = [];
+    
+    // Initialize canvas
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = penColor;
+    ctx.lineWidth = penSize;
+    
+    // Tab switching
+    function showUploadTab() {
+        document.getElementById('upload-tab').style.display = 'block';
+        document.getElementById('draw-tab').style.display = 'none';
+        document.getElementById('upload-tab-btn').classList.add('active');
+        document.getElementById('draw-tab-btn').classList.remove('active');
+    }
+    
+    function showDrawTab() {
+        document.getElementById('upload-tab').style.display = 'none';
+        document.getElementById('draw-tab').style.display = 'block';
+        document.getElementById('upload-tab-btn').classList.remove('active');
+        document.getElementById('draw-tab-btn').classList.add('active');
+    }
+    
+    // Get coordinates relative to canvas
+    function getCoordinates(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        
+        let clientX, clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
+    }
+    
+    // Start drawing
+    function startDrawing(e) {
+        e.preventDefault();
+        isDrawing = true;
+        const coords = getCoordinates(e);
+        lastX = coords.x;
+        lastY = coords.y;
+        currentPath = [{x: lastX, y: lastY, size: penSize, color: penColor}];
+    }
+    
+    // Draw
+    function draw(e) {
+        if (!isDrawing) return;
+        e.preventDefault();
+        
+        const coords = getCoordinates(e);
+        
+        ctx.strokeStyle = penColor;
+        ctx.lineWidth = penSize;
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.lineTo(coords.x, coords.y);
+        ctx.stroke();
+        
+        currentPath.push({x: coords.x, y: coords.y, size: penSize, color: penColor});
+        
+        lastX = coords.x;
+        lastY = coords.y;
+    }
+    
+    // Stop drawing
+    function stopDrawing(e) {
+        if (isDrawing && currentPath.length > 0) {
+            drawingHistory.push([...currentPath]);
+            currentPath = [];
+        }
+        isDrawing = false;
+    }
+    
+    // Mouse events
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+    
+    // Touch events
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchcancel', stopDrawing);
+    
+    // Clear canvas
+    function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawingHistory = [];
+        currentPath = [];
+    }
+    
+    // Undo last stroke
+    function undoCanvas() {
+        if (drawingHistory.length === 0) return;
+        
+        drawingHistory.pop();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Redraw all paths
+        drawingHistory.forEach(path => {
+            if (path.length < 2) return;
+            
+            ctx.strokeStyle = path[0].color;
+            ctx.lineWidth = path[0].size;
+            ctx.beginPath();
+            ctx.moveTo(path[0].x, path[0].y);
+            
+            for (let i = 1; i < path.length; i++) {
+                ctx.lineTo(path[i].x, path[i].y);
+            }
+            ctx.stroke();
+        });
+    }
+    
+    // Update pen size
+    function updatePenSize() {
+        penSize = document.getElementById('pen-size').value;
+        document.getElementById('pen-size-value').textContent = penSize;
+    }
+    
+    // Update pen color
+    function updatePenColor() {
+        penColor = document.getElementById('pen-color').value;
+    }
+    
+    // Zoom functions
+    function zoomIn() {
+        zoomLevel = Math.min(zoomLevel + 0.25, 3);
+        applyZoom();
+    }
+    
+    function zoomOut() {
+        zoomLevel = Math.max(zoomLevel - 0.25, 0.5);
+        applyZoom();
+    }
+    
+    function applyZoom() {
+        canvas.style.transform = `scale(${zoomLevel})`;
+        canvas.style.transformOrigin = 'top left';
+        document.getElementById('zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
+        
+        // Adjust container size
+        canvasContainer.style.width = '100%';
+        canvasContainer.style.height = 'auto';
+    }
+    
+    // Save drawing
+    async function saveDrawing() {
+        if (drawingHistory.length === 0) {
+            alert('Please draw your signature first');
+            return;
+        }
+        
+        // Convert canvas to blob
+        canvas.toBlob(async (blob) => {
+            const formData = new FormData();
+            formData.append('signature', blob, 'signature.png');
+            
+            try {
+                const response = await fetch('{{ url_for("upload_signature") }}', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    alert('Error: ' + (data.error || 'Upload failed'));
+                }
+            } catch (error) {
+                alert('Upload failed: ' + error.message);
+            }
+        }, 'image/png');
+    }
 </script>
 {% endblock %}
